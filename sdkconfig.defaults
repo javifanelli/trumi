@@ -1,0 +1,18 @@
+# Configuracion de Trumi que no es la de fabrica
+# (sdkconfig se arma a partir de este archivo cuando no existe: si se cambia algo
+#  aca, borrar sdkconfig o correr "idf.py set-target esp32s3" para que lo tome)
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# La placa (ESP32 Agent Dev Kit): ESP32-S3 N16R8 = 16 MB de flash y 8 MB de PSRAM
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# Que el procesador vaya a toda velocidad (dibujar la cara grande pide bastante)
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# Lugar para el programa: 3 MB (despues va a crecer con el audio y el WiFi)
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y

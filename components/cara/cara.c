@@ -23,7 +23,7 @@ static const char *TAG = "CARA";
 #define MAX_Y            40     // y para arriba y abajo
 #define PESTANA_GROSOR   6
 #define BOCA_Y           (OJOS_Y + 130)
-#define TEXTO_Y          400    // donde va el texto de abajo
+#define TEXTO_DESDE      372    // la zona del texto de abajo (hasta el final de la pantalla)
 #define CUADRO_MS        30     // cada cuanto se dibuja un cuadro de la animacion
 
 // Como esta la cara en este momento
@@ -147,8 +147,13 @@ static void dibujar(void)
     }
 
     if (texto_abajo != NULL) {
-        int escala = (display_text_width(texto_abajo, 4) <= LCD_H_RES - 16) ? 4 : 3;
-        display_draw_text_centered(texto_abajo, TEXTO_Y, escala, col.pestanas);
+        // La letra mas grande que entre en la zona de abajo (las respuestas largas van mas chicas)
+        int alto_zona = LCD_V_RES - TEXTO_DESDE - 6, escala = 4;
+        while (escala > 1 && (display_text_width(texto_abajo, escala) > LCD_H_RES - 12 ||
+                              display_text_height(texto_abajo, escala) > alto_zona))
+            escala--;
+        int y = TEXTO_DESDE + (alto_zona - display_text_height(texto_abajo, escala)) / 2;
+        display_draw_text_centered(texto_abajo, y, escala, col.pestanas);
     }
     display_flush();
 }
@@ -371,6 +376,20 @@ void cara_dejar_de_escuchar(void)
     cortado = false;
     texto_abajo = NULL;
     animar(CARA_NORMAL, 200);
+}
+
+void cara_poner_texto(const char *texto)
+{
+    texto_abajo = texto;
+}
+
+void cara_pensar(void)
+{
+    cortado = false;
+    cara_t d = CARA_NORMAL;
+    d.x = MAX_X * 0.6f;                  // mira para arriba y a un costado, como pensando
+    d.y = -MAX_Y;
+    animar(d, 300);
 }
 
 void cara_tranquila(void)

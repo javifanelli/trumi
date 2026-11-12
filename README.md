@@ -2,7 +2,7 @@
 
 **Trumi es la hija de Pitri y Flufi.** Tiene los ojos de su papa Pitri, las pestañas de su
 mama Flufi, brillitos en los ojos y cachetes rosados. Vive en una pantalla grande a color,
-¡ya **habla** y **escucha**! Y muy pronto va a poder **charlar** de verdad.
+¡ya **habla**, **escucha** y **charla**!
 
 La armamos entre Sofia y su papa, de a poquito, como hicimos con Pitri y Flufi.
 
@@ -27,7 +27,9 @@ La armamos entre Sofia y su papa, de a poquito, como hicimos con Pitri y Flufi.
 | Esta tranquila | Juega con sus ojos: mira para todos lados, pasea, parpadea, guiña un ojo, se pone contenta |
 | La **tocas** | Hace "bip" y ¡sus ojos **siguen tu dedo**! Cuando lo soltas, se pone contenta y **dice** algo: "¡Jiji!", "¡Me hiciste cosquillas!", "¡Te quiero!"… |
 | Habla | ¡Su **boca se abre y se cierra** con lo que dice! |
-| **Dejas el dedo apoyado** | Juega al **lorito**: pone cara de escuchar (con ondas de sonido a los costados) y graba lo que le decis mientras tengas el dedo apoyado. Cuando lo soltas, ¡**lo repite**! |
+| **Dejas el dedo apoyado** y le hablas | Pone cara de escuchar (con ondas de sonido a los costados) mientras tengas el dedo apoyado. Cuando lo soltas, pone **cara de pensar** ("Mmm...") y ¡te **contesta**! Con su voz y el texto en la pantalla |
+| Al prenderse no encuentra WiFi o su cerebro (o el cerebro falla) | Anda sola: juega al **lorito** y repite lo que le dijiste |
+| Se conecta al WiFi | Lo festeja: **"¡Tengo wifi!"** |
 | Escucha un ruido fuerte | Pone cara de escuchar y pregunta **"¿Me hablaste?"** |
 
 ## 🗺️ Lo que viene
@@ -35,8 +37,8 @@ La armamos entre Sofia y su papa, de a poquito, como hicimos con Pitri y Flufi.
 1. ✅ **La cara y el tactil**
 2. ✅ **Que hable**: frases grabadas y sonidos por su parlante, con la boca moviendose
 3. ✅ **Que escuche**: el lorito y "¿Me hablaste?"
-4. ✅ **Su cerebro**: un modelo de inteligencia artificial en la Raspberry Pi de casa (ver [cerebro/](cerebro/))
-5. 💬 **La primera charla**: tocarla, hablarle ¡y que conteste!
+4. ✅ **Su cerebro**: un modelo de inteligencia artificial en la Raspberry Pi de casa (esta en su propio repo: [cerebro](https://github.com/javifanelli/cerebro))
+5. ✅ **La primera charla**: tocarla, hablarle ¡y que conteste!
 6. 👨‍👩‍👧 **La familia**: que se salude y charle con Pitri y Flufi
 
 ---
@@ -57,6 +59,25 @@ Wireless-Tag (las hojas de datos estan en [datasheets/](datasheets/)).
 
 Las conexiones estan en
 [components/board_config/include/board_config.h](components/board_config/include/board_config.h).
+
+## 📶 WiFi y cerebro
+
+Para charlar, Trumi necesita el WiFi de la casa y la direccion de su cerebro (la Raspberry,
+repo [cerebro](https://github.com/javifanelli/cerebro)). Son **secretos de la casa**, asi que van en archivos que no se
+suben al repo:
+
+1. Copia `components/wifi/wifi_secretos.ejemplo.h` como `components/wifi/wifi_secretos.h`
+   y completa el nombre de la red y la contraseña (es igual al de Pitri y Flufi).
+2. Copia `components/cerebro/cerebro_secretos.ejemplo.h` como
+   `components/cerebro/cerebro_secretos.h` y completa la direccion de la Raspberry
+   (por ejemplo `http://192.168.0.100:8765`) y **la misma clave** que pusiste en
+   `config.json` del cerebro.
+
+Sin esos archivos, Trumi funciona igual: juega al lorito en vez de charlar.
+
+Al prenderse, Trumi espera el WiFi hasta 20 segundos y le pregunta al cerebro si esta
+(`GET /estado`, espera 4 segundos). Si no hay red o no contesta, **anda sola** (lorito)
+hasta que la apaguen. Si una charla falla, repite lo que escucho y tambien sigue sola.
 
 ## 🎛️ Cambia como es Trumi
 
@@ -83,7 +104,13 @@ cara: el tamaño de los ojos, que tan redondos son, que tan separados estan, has
     PSRAM mandada por DMA; mismas funciones de dibujo que Flufi. Detecta cual de las dos
     versiones de pantalla tiene la placa (D0/D3 con pull-up, como el codigo del fabricante).
   - `tactil`: FT6336U por I2C (0x38), consultado cada 20 ms.
-  - `cara`: los ojos y sus juegos; la boca se abre con el nivel de la voz (`cara_set_voz`).
+  - `cara`: los ojos y sus juegos; la boca se abre con el nivel de la voz (`cara_set_voz`);
+    cara de escuchar y de pensar; el texto de abajo elige solo el tamaño de letra que entra.
+  - `wifi`: el mismo de Flufi (datos en `wifi_secretos.h`).
+  - `cerebro`: el cliente del cerebro. `POST CEREBRO_URL/charlar` con `X-Clave` y el audio
+    crudo; lee `X-Escuche` / `X-Pantalla` (percent-encoded) y guarda la respuesta hablada en
+    PSRAM (hasta 30 s). Corre en su propia tarea: `cerebro_preguntar()`, `cerebro_listo()`,
+    `cerebro_respuesta()`. Datos en `cerebro_secretos.h`.
   - `audio`: ES8311 por I2C (0x18/0x19) + I2S std a 16 kHz, 16 bits, MCLK 256×fs; una tarea
     reproduce una fila de audios y notas, prende el amplificador (AW9523 P1_5) solo mientras
     suena y mide el volumen para la boca.

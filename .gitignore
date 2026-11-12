@@ -7,12 +7,6 @@
 # queda en la compu solo para consultarlo
 datasheets/codigo_fabricante/
 
-# El cerebro (Raspberry): la configuracion con la clave, las charlas, las voces y el entorno
-cerebro/config.json
-cerebro/charlas.log
-cerebro/voces/
-cerebro/venv/
-cerebro/respuesta.wav
 
 # macOS
 .DS_Store

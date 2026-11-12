@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdio.h>
+#include <string.h>
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
@@ -14,14 +15,19 @@
 #include "cara.h"
 #include "audio.h"
 #include "voz.h"
+#include "wifi.h"
+#include "cerebro.h"
 
 static const char *TAG = "TRUMI";
 
-// ─── Etapas 1, 2 y 3: la cara, el tactil, la voz y los oidos ─────────────────
+// ─── Etapas 1 a 5: la cara, el tactil, la voz, los oidos y la charla ─────────
 // Trumi juega con sus ojos. Cuando la tocan, hace "bip", sus ojos siguen al dedo
 // y cuando lo sueltan se pone contenta y dice algo (¡con su voz!).
-// Si dejan el dedo apoyado, se pone a escuchar ("el lorito"): graba lo que le
-// dicen mientras el dedo sigue apoyado y, al soltarlo, lo repite.
+// Si dejan el dedo apoyado, se pone a escuchar: graba lo que le dicen mientras el
+// dedo sigue apoyado y, al soltarlo, se lo manda a su cerebro (en la Raspberry),
+// pone cara de pensar y CONTESTA. Si al prenderse no tenia red o no encontro al
+// cerebro (o el cerebro falla), anda sola como antes: juega al lorito, repite lo
+// que escucho.
 // Y si escucha un ruido fuerte mientras esta tranquila, pregunta "¿Me hablaste?".
 
 static int16_t *grabacion = NULL;            // lo que escucha el lorito (en la PSRAM)
@@ -30,6 +36,33 @@ static int64_t  ultimo_ruido_us = 0;         // cuando reacciono a un ruido por 
 static int64_t  ultimo_sonido_us = 0;        // cuando hablo ella por ultima vez (para no escucharse)
 
 static int64_t ahora_us(void) { return esp_timer_get_time(); }
+
+static char texto_respuesta[CEREBRO_MAX_TEXTO + 32];   // la respuesta, partida en renglones
+
+// Parte el texto en renglones de hasta "letras" letras, cortando en los espacios
+// (¡ y ¿ ocupan 2 bytes, pero son una letra)
+static void partir_en_renglones(const char *texto, char *salida, size_t tamano, int letras)
+{
+    size_t n = 0;
+    const char *p = texto;
+    while (*p && n + 2 < tamano) {
+        while (*p == ' ') p++;                         // sin espacios al principio del renglon
+        const char *fin = p, *ultimo_espacio = NULL;
+        int cuenta = 0;
+        while (*fin) {
+            if (((unsigned char)*fin & 0xC0) != 0x80) {
+                if (cuenta == letras) break;
+                cuenta++;
+            }
+            if (*fin == ' ') ultimo_espacio = fin;
+            fin++;
+        }
+        const char *corte = (*fin && ultimo_espacio != NULL) ? ultimo_espacio : fin;
+        if (n > 0 && corte > p) salida[n++] = '\n';
+        while (p < corte && n + 1 < tamano) salida[n++] = *p++;
+    }
+    salida[n] = '\0';
+}
 
 // ─── Sonidos ─────────────────────────────────────────────────────────────────
 // Notas: DO = 523 Hz, MI = 659, SOL = 784, DO agudo = 1047...
@@ -63,8 +96,47 @@ static void terminar_de_hablar(void)
     ultimo_sonido_us = ahora_us();
 }
 
-// El lorito: graba mientras el dedo siga apoyado y despues repite lo que escucho
-static void lorito(void)
+// Le manda al cerebro lo que escucho, pone cara de pensar y contesta con su voz.
+// Devuelve false si no se puede charlar (sin red, o el cerebro no esta o fallo):
+// en ese caso, Trumi hace de lorito.
+static bool contestar_con_el_cerebro(size_t muestras)
+{
+    if (!cerebro_disponible()) return false;
+    if (!cerebro_preguntar(grabacion, muestras)) return false;
+
+    ESP_LOGI(TAG, "Pensando...");
+    cara_pensar();
+    static const char *const pensando[] = { "Mmm", "Mmm.", "Mmm..", "Mmm..." };
+    for (int i = 0; !cerebro_listo(); i++) {
+        cara_poner_texto(pensando[(i / 12) % 4]);       // los puntitos van apareciendo
+        tactil_se_toco(NULL, NULL);                    // mientras piensa, los toques no cuentan
+        cara_un_cuadro();
+    }
+    cara_poner_texto(NULL);
+
+    const cerebro_respuesta_t *r = cerebro_respuesta();
+    if (!r->ok || r->muestras == 0) {
+        ESP_LOGW(TAG, "El cerebro no contesto (%s): hago de lorito", r->error);
+        cara_tranquila();
+        return false;                                  // repite lo que escucho (lorito)
+    }
+
+    // ¡Contesta! Con la voz que le mando el cerebro y el texto en la pantalla
+    partir_en_renglones(r->pantalla, texto_respuesta, sizeof(texto_respuesta), 24);
+    cara_tranquila();
+    audio_reproducir(r->audio, r->muestras * sizeof(int16_t));
+    cara_poner_texto(texto_respuesta);
+    terminar_de_hablar();
+    for (int i = 0; i < MOSTRAR_RESPUESTA_MS / 30 && !tactil_hay_toque_nuevo(); i++)
+        cara_un_cuadro();                              // que se pueda terminar de leer
+    cara_poner_texto(NULL);
+    cara_tranquila();
+    return true;
+}
+
+// Escucha mientras el dedo siga apoyado. Despues le pregunta al cerebro y contesta,
+// o (si no puede charlar) juega al lorito: repite lo que escucho.
+static void escuchar(void)
 {
     ESP_LOGI(TAG, "Escuchando...");
     audio_grabar_empezar(grabacion, max_grabacion);
@@ -83,7 +155,9 @@ static void lorito(void)
         cara_tranquila();
         return;
     }
-    audio_reproducir(grabacion, muestras * sizeof(int16_t));   // ¡repite lo que escucho!
+    if (contestar_con_el_cerebro(muestras)) return;    // ¡charla!
+
+    audio_reproducir(grabacion, muestras * sizeof(int16_t));   // el lorito: ¡repite lo que escucho!
     cara_contenta("¡Escucha!", 200);
     terminar_de_hablar();
     cara_tranquila();
@@ -91,7 +165,7 @@ static void lorito(void)
 
 // Cuando la tocan: "bip", mientras el dedo esta apoyado los ojos lo siguen, y
 // cuando lo sueltan se pone contenta y dice algo. Si dejan el dedo apoyado un
-// ratito, se pone a escuchar (el lorito).
+// ratito, se pone a escuchar (y despues contesta, o hace de lorito).
 static void atender_toque(void)
 {
     int x, y;
@@ -104,7 +178,7 @@ static void atender_toque(void)
         tactil_se_toco(NULL, NULL);                    // si levantan y vuelven a apoyar, es el mismo juego
         if (audio_mic_listo() && grabacion != NULL &&
             ahora_us() - inicio > (int64_t)MANTENER_PARA_ESCUCHAR_MS * 1000) {
-            lorito();                                  // dejo el dedo apoyado: ¡a escuchar!
+            escuchar();                                // dejo el dedo apoyado: ¡a escuchar!
             return;
         }
         cara_mirar_hacia(x, y, 60);
@@ -159,6 +233,8 @@ void app_main(void)
     tactil_iniciar();
     audio_iniciar();
     audio_volumen(VOLUMEN);
+    wifi_iniciar();                    // se conecta "de fondo"
+    cerebro_iniciar();
 
     // Lugar para lo que escucha el lorito (en la PSRAM: 16.000 muestras por segundo)
     max_grabacion = (size_t)GRABAR_MAX_S * AUDIO_MUESTRAS_POR_SEGUNDO;
@@ -189,10 +265,19 @@ void app_main(void)
     terminar_de_hablar();
     cara_tranquila();
 
+    bool ya_festejo_wifi = false;
     while (1) {
         if (tactil_hay_toque_nuevo()) {
             atender_toque();
             continue;
+        }
+
+        // La primera vez que se conecta al WiFi, lo festeja
+        if (!ya_festejo_wifi && wifi_conectado()) {
+            ya_festejo_wifi = true;
+            ESP_LOGI(TAG, "Tengo wifi!");
+            cara_contenta("¡Tengo wifi!", 600);
+            cara_tranquila();
         }
 
         // Juega con sus ojos

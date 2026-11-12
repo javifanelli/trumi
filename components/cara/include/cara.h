@@ -50,4 +50,10 @@ void cara_escuchar(const char *texto);   // pone cara de escuchar (ojos atentos,
 void cara_un_cuadro(void);               // dibuja un cuadro (para ir mostrando las ondas mientras escucha)
 void cara_dejar_de_escuchar(void);       // vuelve a la cara de siempre
 
+// ─── Pensar y textos ─────────────────────────────────────────────────────────
+void cara_pensar(void);                  // pone cara de pensar (mira para arriba, a un costado)
+// Cambia el texto de abajo sin animar (NULL = sin texto). El texto tiene que
+// seguir existiendo mientras se muestre. Se ve en el proximo cuadro.
+void cara_poner_texto(const char *texto);
+
 #endif // CARA_H

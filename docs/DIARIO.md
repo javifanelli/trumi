@@ -14,6 +14,31 @@ Lo mas nuevo va arriba.
 
 ---
 
+## 2026-11-12 — Trumi tambien anda sola 🦜
+
+**Que hicimos:** El cerebro de la Raspberry es **muy lento** (¡tardaba mas de un minuto en pensar!). Asi que ahora, cuando Trumi se prende, espera el WiFi un ratito (hasta 20 segundos) y le pregunta a su cerebro **"¿estas?"**. Si no hay red o el cerebro no contesta enseguida, Trumi **anda sola** como antes: juega al **lorito** y repite lo que le dicen, hasta que la apaguen. Y si en medio de una charla el cerebro falla, en vez de decir "¡Uy!" repite lo que escucho y sigue de lorito.
+
+Tambien, en broma, le pedimos algo de grandes y contesto algo raro (¡y encima tardo tanto que Trumi se canso de esperar y corto!). Le enseñamos a contestar con dulzura que eso es cosa de grandes y proponer otro juego, y ahora Trumi espera hasta 150 segundos.
+
+Y al cerebro le armamos **su propio repo** ([cerebro](https://github.com/javifanelli/cerebro)), asi en la Raspberry se actualiza con un simple `git pull`.
+
+**Que aprendimos:**
+- Antes de mandarle una carta larga a alguien, conviene preguntarle si esta en casa. Eso es lo que hace Trumi con su cerebro: una pregunta cortita al prenderse.
+- Un juguete tiene que andar **siempre**, aunque falle algo que no depende de el (el WiFi, la Raspberry). Tener un "plan B" lo hace mucho mas divertido.
+
+---
+
+## 2026-11-12 — ¡La primera charla! 💬
+
+**Que hicimos:** Trumi ahora se conecta al **WiFi** de la casa y habla con su **cerebro** en la Raspberry. Le dejas el dedo apoyado, le hablas, y cuando soltas el dedo pone **cara de pensar** ("Mmm...") mientras el cerebro escucha, piensa y prepara la voz. ¡Y despues **te contesta**, con la voz de Daniela y el texto en la pantalla! Si no tiene WiFi, sigue jugando al lorito.
+
+**Que aprendimos:**
+- Trumi le manda al cerebro los **numeros del sonido** por WiFi, y el cerebro le devuelve otros numeros: los de su respuesta hablada. Es como mandar una carta y recibir otra.
+- Mientras el cerebro piensa (tarda unos segundos), Trumi no se queda congelada: una parte de su programa espera la respuesta y otra le mueve los ojos y los puntitos de "Mmm...".
+- Las respuestas largas se **parten en renglones** para que entren en la pantalla, cortando en los espacios para no partir las palabras.
+
+---
+
 ## 2026-11-11 — El cerebro de Trumi 🧠
 
 **Que hicimos:** Le armamos a Trumi su **cerebro**, que vive en la **Raspberry Pi** de la casa. Cuando le llega lo que Trumi escucho, el cerebro lo **pasa a texto** (con un programa que se llama Whisper), **piensa que contestar** con una inteligencia artificial (Qwen) que sabe que es Trumi, la hija de Pitri y Flufi, y **lo convierte en voz** (con Piper, con una voz argentina llamada Daniela, un poquito mas aguda para que suene como una nena). Tambien le subimos la **sensibilidad a los microfonos**, porque habia que hablarle muy fuerte y de cerca.

@@ -34,6 +34,11 @@
 #define UMBRAL_RUIDO              0.35f  // que tan fuerte tiene que ser un ruido para que pregunte (0 a 1)
 #define ESPERA_ENTRE_RUIDOS_MS    15000  // despues de preguntar "¿Me hablaste?", cuanto espera para volver a hacerlo
 
+// ─── La charla (con su cerebro en la Raspberry) ──────────────────────────────
+// La direccion y la clave del cerebro van en components/cerebro/cerebro_secretos.h,
+// y los datos del WiFi en components/wifi/wifi_secretos.h (no se suben al repo)
+#define MOSTRAR_RESPUESTA_MS      2500   // despues de hablar, cuanto deja el texto en la pantalla
+
 // ─── Juegos ──────────────────────────────────────────────────────────────────
 // Descanso entre un juego y otro (se elige un valor al azar en este rango)
 #define DESCANSO_MIN_MS  300

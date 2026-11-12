@@ -1,3 +1,0 @@
-faster-whisper
-piper-tts
-numpy
